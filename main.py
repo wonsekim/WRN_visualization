@@ -283,7 +283,7 @@ def validation():
            output = WRN(inputv)
         pred = output.data.max(1)[1]
         correct += pred.eq(labelv.data).cpu().sum()
-    return 100*correct / (len(validloader)*batch_size)
+    return 100. * correct / len(validloader.dataset)
                            
                            
 #validation only!                           
