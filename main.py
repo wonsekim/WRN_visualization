@@ -84,9 +84,9 @@ assert trainset
 assert validset
 
 #define loaders
-trainloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=opt.batchSize,
                                          shuffle=True, num_workers=int(opt.workers))
-validloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
+validloader = torch.utils.data.DataLoader(validset, batch_size=opt.batchSize,
                                          shuffle=False, num_workers=int(opt.workers))
 ngpu = int(opt.ngpu)
 #nc = 3
@@ -142,6 +142,8 @@ class _WRN(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(hexa*k, hexa*k, 3, 1, 1, bias=False),
         )
+            # input is (hexa*k) X 32 X 32
+        self.group1.conv11 = nn.Conv2d(hexa*k, hexa*k*2, 1, 2, 0, bias=False)
         self.group1.block0 = nn.Sequential(
             # input is (hexa*k) x 32 x 32
             nn.BatchNorm2d(hexa*k),
@@ -152,11 +154,8 @@ class _WRN(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(hexa*k*2, hexa*k*2, 3, 1, 1, bias=False),
         )
-            # input ie (hexa*k) X 32 X 32
-        self.group1.conv11 = nn.Conv2d(hexa*k, hexa*k*2, 1, 2, 0, bias=False)
-
         self.group1.block1 = nn.Sequential(
-            # input is (hexa**2) x 16 x 16
+            # input is (hexa*k*2) x 16 x 16
             nn.BatchNorm2d(hexa*k*2),
             nn.ReLU(inplace=True),
             nn.Conv2d(hexa*k*2, hexa*k*2, 3, 1, 1, bias=False),
@@ -175,7 +174,8 @@ class _WRN(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(hexa*k*2, hexa*k*2, 3, 1, 1, bias=False),
         )
-
+            # input is (hexa*k*2) X 16 X 16
+        self.group2.conv11 = nn.Conv2d(hexa*k*2, hexa*k*4, 1, 2, 0, bias=False)
         self.group2.block0 = nn.Sequential(
             # input is (hexa*k*2) x 16 x 16
             nn.BatchNorm2d(hexa*k*2),
@@ -186,9 +186,7 @@ class _WRN(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(hexa*k*4, hexa*k*4, 3, 1, 1, bias=False),
         )
-            # input ie (hexa*k*2) X 16 X 16
-        self.group2.conv11 = nn.Conv2d(hexa*k*2, hexa*k*4, 1, 2, 0, bias=False)
-
+       
         self.group2.block1 = nn.Sequential(
             # input is (hexa*k*4) x 8 x 8
             nn.BatchNorm2d(hexa*k*4),
@@ -216,7 +214,7 @@ class _WRN(nn.Module):
             nn.ReLU(inplace=True),
             nn.AvgPool2d(8),           
         )
-        self.top = nn.Liear(hexa*k*4, numClass,bias=True)
+        self.top = nn.Linear(hexa*k*4, numClass,bias=True)
 
     def forward(self, input):
         #conv0
@@ -261,6 +259,7 @@ if opt.cuda:
 
 # setup optimizer
 optimizerD = optim.Adam(WRN.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+
 def validation():
     correct = 0
     for i, data in enumerate(validloader):
